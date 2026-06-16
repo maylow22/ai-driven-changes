@@ -495,8 +495,10 @@ updated release notes / changelog, pokud existuje
 - upravit Page Object Model,
 - v průběžných cyklech spouštět **Minimal Viable Test Set** (relevantní testy podle `03-test-automation-plan.md`),
 - před uzavřením spustit **kompletní testovací sadu** (vynucuje orchestrátor ve Final Review Check),
+- při selhání testu nejprve provést **„Retest“** a analýzu, zda selhal kód, nebo samotný test (např. kvůli nekonzistentnímu UI),
 - zapsat report,
-- rozlišit chybu aplikace, chybu testu, flaky test a problém dokumentace.
+- rozlišit chybu aplikace, chybu testu, flaky test a problém dokumentace,
+- explicitně označit flaky testy včetně výsledku retestu, aby člověk při finální kontrole neztrácel čas falešnými poplachy.
 
 Výstupy:
 
@@ -901,7 +903,13 @@ rationale: >
 
 ## 7. Page Object Model Changes
 
-## 8. Flaky Tests
+## 8. Flaky Tests & Retest Analysis
+
+<!-- Pro každé selhání: proběhl retest? selhal kód, nebo test? -->
+<!-- Cílem je, aby člověk při finální kontrole neřešil falešné poplachy. -->
+
+| Test | Retest proveden | Verdikt (code/test/flaky/docs) | Poznámka |
+|------|-----------------|--------------------------------|----------|
 
 ## 9. Failures Requiring Implementation Changes
 
@@ -1630,7 +1638,15 @@ allowed_actions:
   - modify Page Object Model
   - run the Minimal Viable Test Set during preliminary/iterative cycles
   - run full test suite (mandatory before closing, enforced at Final Review Check)
+  - re-run (retest) failing tests to detect flakiness
   - record test results
+
+feedback_loop:
+  on_failure:
+    - retest the failing test
+    - analyze whether the code failed or the test itself failed (e.g. inconsistent UI)
+    - record verdict (code | test | flaky | docs) in 05-full-test-run-report.md
+  goal: avoid false alarms for the human during final review
 
 forbidden_actions:
   - silently reduce test scope
@@ -1644,6 +1660,7 @@ success_criteria:
   - a full test run was executed before final review
   - test results are recorded
   - failures are categorized
+  - failing tests were retested and verdict (code/test/flaky/docs) recorded
   - Page Object Model changes are documented
   - flaky tests are identified
 ```
@@ -1677,10 +1694,13 @@ plán neodpovídá schválenému briefu
 implementace se odchyluje od plánu
 → člověk / Implementation Agent
 
+test fail (nejprve retest + analýza příčiny)
+→ verdikt rozhoduje o směru návratu
+
 test fail kvůli aplikaci
 → Implementation Agent / člověk
 
-test fail kvůli testu
+test fail kvůli testu / flaky
 → Automated Test Agent
 
 dokumentace neodpovídá realitě
