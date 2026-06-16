@@ -934,6 +934,87 @@ rationale: >
 ## 9. Final Recommendation
 ```
 
+## 9.8 Strojově čitelné sekce a validační schémata
+
+Každý hlavní artefakt musí kromě lidsky čitelného textu obsahovat **strojově čitelnou sekci** (fenced blok ```yaml nebo ```json) s povinnými poli. Orchestrátor tuto sekci validuje proti schématu artefaktu a teprve po úspěšné validaci posune tok dál nebo zapojí člověka.
+
+Pravidla:
+
+- strojově čitelný blok je v artefaktu právě jeden a má stabilní strukturu,
+- chybějící nebo prázdné povinné pole = automatické vrácení agentovi (před zapojením člověka),
+- schémata jsou verzovaná spolu s metodikou.
+
+### `01-brief.md`
+
+```yaml
+artifact: brief
+schema_version: 1
+ticket_id: <string>            # required
+triage:                        # required
+  track: fast-track | standard-track
+  estimated_affected_modules: <number>
+  affected_modules: []
+acceptance_criteria: []        # required, non-empty
+scope: []                      # required
+out_of_scope: []
+open_questions: []
+risks: []
+```
+
+### `02-test-cases.md`
+
+```yaml
+artifact: test_cases
+schema_version: 1
+ticket_id: <string>            # required
+acceptance_scenarios: []       # required, non-empty
+regression_scenarios: []
+edge_cases: []
+automation_notes: <string>
+```
+
+### `03-implementation-plan.md`
+
+```yaml
+artifact: implementation_plan
+schema_version: 1
+ticket_id: <string>            # required
+steps: []                      # required, non-empty
+likely_changed_files: []       # required
+minimal_viable_test_set: []    # required
+risks: []
+```
+
+### `05-full-test-run-report.md`
+
+```yaml
+artifact: full_test_run_report
+schema_version: 1
+ticket_id: <string>            # required
+full_run_executed: true | false   # required
+result: pass | fail               # required
+failures:
+  code: []
+  test: []
+  docs: []
+flaky:                            # viz 9.6 / feedback loop
+  - test: <string>
+    retested: true | false
+    verdict: code | test | flaky | docs
+```
+
+### `06-final-review.md`
+
+```yaml
+artifact: final_review
+schema_version: 1
+ticket_id: <string>               # required
+required_artifacts_present: true | false   # required
+human_gates_ok: true | false               # required
+full_test_run_ok: true | false             # required
+recommendation: approve | return | block   # required
+```
+
 ---
 
 # 10. Lokální MVP v Claude Code
@@ -1038,9 +1119,15 @@ You continuously check:
 
 - whether the expected output file exists,
 - whether it is specific enough,
+- whether it contains a valid machine-readable section matching the artifact schema,
+- whether all mandatory fields are filled (e.g. acceptance criteria, triage),
 - whether the next step is allowed,
 - whether a human decision is required,
 - whether a task should be returned to a previous agent.
+
+You validate every agent artifact against its schema before involving the human. If a
+mandatory field is missing, you return the task to the agent first, and only surface
+validated artifacts to the human.
 
 If information is missing or risky assumptions would be required, ask the human.
 ```
@@ -1199,6 +1286,8 @@ Pro **fast-track**.
 # 13. Definice agentů pro vygenerování `.claude/agents`
 
 Níže uvedené bloky jsou koncepční specifikace. Lze je převést do konkrétních `.md` souborů pro Claude Code agenty.
+
+Každý agent, který produkuje hlavní artefakt, musí do něj zapsat **strojově čitelnou sekci** podle schématu daného artefaktu (viz 9.8). Orchestrátor ji validuje před posunem toku dál.
 
 ## 13.1 `technical-wiki.md`
 
@@ -1600,14 +1689,22 @@ dokumentace neodpovídá realitě
 
 ## 14.3 Kontrolovat artefakty
 
+Místo spoléhání na obecná pravidla v `CLAUDE.md` orchestrátor provádí **přísnou validaci artefaktů proti schématu**.
+
+Každý výstup agenta (např. `01-brief.md`) musí obsahovat **strojově čitelnou sekci** (YAML nebo JSON s povinnými poli), kterou orchestrátor zvaliduje proti předem definovanému schématu pro daný artefakt.
+
 Před přechodem na další krok orchestrátor ověřuje:
 
 - soubor existuje,
 - soubor není prázdný,
 - soubor není pouze obecný text,
 - obsahuje očekávané sekce,
+- **obsahuje strojově čitelný blok a ten je validní vůči schématu artefaktu**,
+- **všechna povinná pole jsou vyplněná** (např. Acceptance Criteria, Triage Classification),
 - neobsahuje zásadní otevřené otázky bez odpovědi,
 - odpovídá předchozímu schválenému rozsahu.
+
+Pokud agent nepředloží všechna povinná pole, orchestrátor mu úkol **vrátí k dopracování ještě předtím, než o tom informuje člověka**. Člověk se zapojuje až u validních artefaktů.
 
 ## 14.4 Předávat jen relevantní kontext
 
