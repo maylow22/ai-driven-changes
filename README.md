@@ -195,6 +195,8 @@ Triage provádí `Change Intake & Discovery Agent` a kritériem je především 
 
 # 3. High-level schéma
 
+## 3.1 Zjednodušené schéma toku
+
 ```mermaid
 flowchart TD
     A[Živá dokumentace<br/>wiki + user docs] --> B[Discovery změny<br/>kód + testy + UI]
@@ -220,6 +222,54 @@ flowchart TD
     K --> L{Ruční kontrola člověkem}
     L -- vrátit --> H
     L -- schválit --> M[DONE]
+```
+
+## 3.2 Kompletní flow: agenti, stavy a human gates
+
+Tento diagram spojuje dohromady **agenty** (modře), **human gates** (oranžově), **orchestrační krok** (fialově) a **stavy**, do kterých se workflow posouvá (zeleně + popisky na hranách). Je v něm vidět triage rozdělení na fast-track / standard-track i návratové smyčky.
+
+```mermaid
+flowchart TD
+    classDef agent fill:#e3f2fd,stroke:#1565c0,color:#0d47a1;
+    classDef gate fill:#fff3e0,stroke:#e65100,color:#bf360c;
+    classDef state fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20;
+    classDef orch fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c;
+
+    subgraph INIT[Init faze]
+        direction LR
+        TWA[Technical Wiki Agent]:::agent --> UDA[User Docs Agent]:::agent
+    end
+
+    INIT --> REQ([NEW_REQUEST]):::state
+    REQ --> CIDA[Change Intake & Discovery Agent]:::agent
+    CIDA --> TRIAGE{Triage komplexity<br/>stav: TRIAGE_DONE}:::gate
+
+    %% standard-track
+    TRIAGE -->|standard-track| BRIEF[Change Intake & Discovery Agent<br/>01-brief.md<br/>stav: DISCOVERY_BRIEF_DONE]:::agent
+    BRIEF --> TCW[Test Case Writer Agent<br/>02-test-cases.md<br/>stav: TEST_CASES_DONE]:::agent
+    TCW --> HG1{Human gate: brief + testy}:::gate
+    HG1 -->|vratit / reject| BRIEF
+    HG1 -->|BRIEF_AND_TESTS_APPROVED| IPA[Implementation Planner Agent<br/>03-plany + MVTS<br/>stav: IMPLEMENTATION_PLAN_DONE]:::agent
+    IPA --> HG2{Human gate: plan}:::gate
+    HG2 -->|vratit| IPA
+    HG2 -->|PLAN_APPROVED| IMPL
+
+    %% fast-track
+    TRIAGE -->|fast-track| PROP[Change Intake & Discovery Agent<br/>01-change-proposal.md<br/>brief + testy + plan<br/>stav: CHANGE_PROPOSAL_DONE]:::agent
+    PROP --> HG3{Human gate: navrh zmeny}:::gate
+    HG3 -->|vratit| PROP
+    HG3 -->|CHANGE_PROPOSAL_APPROVED| IMPL
+
+    %% spolecna vetev
+    IMPL[Implementation Agent / clovek<br/>+ Wiki & User Docs Update Agent<br/>stav: IMPLEMENTATION_AND_DOCS_DONE]:::agent
+    IMPL --> ATA[Automated Test Agent<br/>MVTS v prubeznych cyklech]:::agent
+    ATA --> NALEZ{Nalez?}:::gate
+    NALEZ -->|chyba v kodu / docs| IMPL
+    NALEZ -->|chyba/flaky v testu, retest| ATA
+    NALEZ -->|FULLY_TESTED| FRC[Final Review Check<br/>orchestrator: full test run<br/>stav: FINAL_REVIEW_READY]:::orch
+    FRC --> HG4{Human gate: finalni kontrola}:::gate
+    HG4 -->|vratit| IMPL
+    HG4 -->|MANUAL_CHECK_AND_APPROVAL| DONE([DONE]):::state
 ```
 
 ---
