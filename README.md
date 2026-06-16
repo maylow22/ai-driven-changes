@@ -46,6 +46,16 @@ Základem workflow je kvalitní a průběžně udržovaná dokumentace:
 
 Dokumentace není vedlejší výstup. Je to zdroj kontextu pro budoucí analýzy a změny.
 
+Aby agenti nenaráželi na limity kontextového okna u velkých repozitářů, technická wiki **není jeden velký dokument, ale hierarchická struktura**:
+
+```text
+mapa modulů        → /wiki/modules/index.md
+detaily modulů     → /wiki/modules/{module}.md
+API endpointy      → /wiki/api/{module}.md
+```
+
+Díky tomu lze agentům předávat jen relevantní „znalostní oblasti“ místo celého popisu systému (viz triage znalostních oblastí v Discovery agentovi).
+
 AI agenti se při práci neopírají pouze o aktuální ticket, ale o:
 
 - technickou wiki,
@@ -270,18 +280,23 @@ Repository Mapper Agent
 - popsat API,
 - popsat datové vrstvy,
 - popsat testovací infrastrukturu,
-- vytvořit technickou LLM wiki.
+- vytvořit technickou LLM wiki,
+- uspořádat wiki do hierarchické struktury (mapa modulů → detaily modulů → API endpointy).
 
-Výstupy:
+Výstupy (hierarchická struktura):
 
 ```text
 /wiki/index.md
 /wiki/architecture/overview.md
-/wiki/modules/index.md
-/wiki/api/index.md
+/wiki/modules/index.md          = mapa modulů (rozcestník)
+/wiki/modules/{module}.md       = detail konkrétního modulu
+/wiki/api/index.md              = přehled API
+/wiki/api/{module}.md           = endpointy konkrétního modulu
 /wiki/tests/index.md
 /wiki/domain/glossary.md
 ```
+
+`modules/index.md` slouží jako mapa, ze které lze adresovat jednotlivé moduly a jejich API bez načítání celé wiki najednou.
 
 ### User Docs Agent
 
@@ -318,7 +333,8 @@ Výstupy:
 Úkol:
 
 - vzít hrubý požadavek,
-- projít wiki,
+- z mapy modulů (`/wiki/modules/index.md`) **identifikovat relevantní znalostní oblasti** a načíst jen je,
+- projít relevantní části wiki,
 - projít user docs,
 - projít relevantní zdrojový kód,
 - projít existující testy,
@@ -355,7 +371,9 @@ fast-track:     dotčen ~1 modul, bez změny datového modelu/API, nízké rizik
 standard-track: 2+ dotčené moduly, změna business logiky/dat/API, nejasné nebo rizikové dopady
 ```
 
-Výsledek triage agent zapíše do sekce `Triage Classification` v `01-brief.md`. Při pochybnostech volí vždy `standard-track`. Triage navrhuje agent, ale člověk ji při schválení může změnit.
+Výsledek triage agent zapíše do sekce `Triage Classification` v `01-brief.md` (včetně seznamu dotčených modulů, který slouží jako seznam relevantních **znalostních oblastí**). Při pochybnostech volí vždy `standard-track`. Triage navrhuje agent, ale člověk ji při schválení může změnit.
+
+Orchestrátor pak následným agentům (Planner, Implementation, Test) předává pouze ty části wiki, které odpovídají dotčeným modulům (`/wiki/modules/{module}.md`, `/wiki/api/{module}.md`), místo celého popisu systému.
 
 U **fast-track** se Brief a Implementační plán slučují do jednoho artefaktu („Návrh změny“) a slovní test scénáře jsou minimální; člověk schvaluje rovnou tento návrh a jde se do implementace. U **standard-track** běží plný proces tak, jak je popsán dále v metodice.
 
@@ -677,9 +695,11 @@ stateDiagram-v2
   architecture/
     overview.md
   modules/
-    index.md
+    index.md          # mapa modulů (rozcestník)
+    {module}.md       # detail konkrétního modulu
   api/
-    index.md
+    index.md          # přehled API
+    {module}.md       # endpointy konkrétního modulu
   tests/
     index.md
   domain/
@@ -1198,8 +1218,10 @@ inputs:
 outputs:
   - wiki/index.md
   - wiki/architecture/overview.md
-  - wiki/modules/index.md
-  - wiki/api/index.md
+  - wiki/modules/index.md      # module map (entry point)
+  - wiki/modules/{module}.md   # per-module detail
+  - wiki/api/index.md          # API overview
+  - wiki/api/{module}.md       # per-module endpoints
   - wiki/tests/index.md
   - wiki/domain/glossary.md
 
@@ -1217,6 +1239,7 @@ forbidden_actions:
 
 success_criteria:
   - wiki describes the current architecture
+  - wiki is organized hierarchically (module map -> module details -> API endpoints)
   - key modules and APIs are identified
   - test structure is documented
   - unknowns are explicitly marked
@@ -1323,6 +1346,7 @@ forbidden_actions:
 success_criteria:
   - 01-brief.md (or 01-change-proposal.md for fast-track) exists
   - triage classification is present and machine-readable
+  - relevant knowledge areas (affected modules) are identified for scoped wiki handoff
   - current state is described
   - scope and out-of-scope are clear
   - acceptance criteria are present
@@ -1585,7 +1609,17 @@ Před přechodem na další krok orchestrátor ověřuje:
 - neobsahuje zásadní otevřené otázky bez odpovědi,
 - odpovídá předchozímu schválenému rozsahu.
 
-## 14.4 Pracovat s nejistotou
+## 14.4 Předávat jen relevantní kontext
+
+Technická wiki je hierarchická. Orchestrátor nenačítá celý popis systému, ale:
+
+- z `/wiki/modules/index.md` zjistí mapu modulů,
+- podle dotčených modulů z triage vybere relevantní znalostní oblasti,
+- následným agentům (Planner, Implementation, Test) předá pouze odpovídající `/wiki/modules/{module}.md` a `/wiki/api/{module}.md`.
+
+Tím se šetří kontextové okno a snižuje riziko zahlcení agenta nesouvisejícími informacemi.
+
+## 14.5 Pracovat s nejistotou
 
 Agent nemá předstírat jistotu.
 
