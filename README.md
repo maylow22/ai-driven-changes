@@ -168,6 +168,17 @@ Final Review Check
 
 Provádí ho orchestrátor.
 
+## 2.9 Náročnost procesu odpovídá náročnosti změny
+
+Plný proces nesmí brzdit drobné úpravy. Proto se na začátku každé změny provádí **triage** (klasifikace komplexity), která rozhodne o cestě změny:
+
+```text
+Fast-track  = nízká komplexita (překlepy, jednoduché UI změny)
+Standard-track = plný proces
+```
+
+Triage provádí `Change Intake & Discovery Agent` a kritériem je především automatický odhad počtu dotčených modulů z technické wiki. U fast-track se Brief a Implementační plán slučují do jednoho kroku a člověk schvaluje rovnou „Návrh změny“. Human gates se nikdy neruší, jen se počet kroků a artefaktů přizpůsobuje riziku.
+
 ---
 
 # 3. High-level schéma
@@ -175,13 +186,18 @@ Provádí ho orchestrátor.
 ```mermaid
 flowchart TD
     A[Živá dokumentace<br/>wiki + user docs] --> B[Discovery změny<br/>kód + testy + UI]
-    B --> C[Brief]
+    B --> T{Triage<br/>komplexita změny?}
+    T -- fast-track --> FT[Návrh změny<br/>brief + testy + plán]
+    T -- standard-track --> C[Brief]
     C --> D[Test scénáře]
     D --> E{Člověk schválí<br/>brief + testy?}
     E -- ne --> B
     E -- ano --> F[Implementační plán]
     F --> G{Člověk schválí<br/>plán?}
     G -- ne --> F
+    FT --> GFT{Člověk schválí<br/>návrh změny?}
+    GFT -- ne --> B
+    GFT -- ano --> H
     G -- ano --> H[Implementace + dokumentace]
     H --> I[Kompletní automatizované testy]
     I --> J{Nález?}
@@ -305,6 +321,7 @@ Výstupy:
 - projít relevantní zdrojový kód,
 - projít existující testy,
 - podle potřeby projít UI přes Playwright,
+- provést **triage** (klasifikaci komplexity změny),
 - ptát se člověka při nejasnostech,
 - vytvořit jeden informovaný brief.
 
@@ -313,6 +330,32 @@ Výstupy:
 ```text
 /changes/{ticket-id}/01-brief.md
 ```
+
+#### Triage (klasifikace komplexity)
+
+Hned v prvním kroku agent odhadne komplexitu změny a zařadí ji do jedné ze dvou cest:
+
+```text
+fast-track     = nízká komplexita
+standard-track = plný proces
+```
+
+Kritérium výběru:
+
+- **automatický odhad počtu dotčených modulů** z technické wiki (primární signál),
+- typ změny (oprava překlepu, jednoduchá UI úprava vs. změna business logiky, datového modelu nebo API),
+- riziko a rozsah dopadu na existující testy.
+
+Doporučené pravidlo:
+
+```text
+fast-track:     dotčen ~1 modul, bez změny datového modelu/API, nízké riziko
+standard-track: 2+ dotčené moduly, změna business logiky/dat/API, nejasné nebo rizikové dopady
+```
+
+Výsledek triage agent zapíše do sekce `Triage Classification` v `01-brief.md`. Při pochybnostech volí vždy `standard-track`. Triage navrhuje agent, ale člověk ji při schválení může změnit.
+
+U **fast-track** se Brief a Implementační plán slučují do jednoho artefaktu („Návrh změny“) a slovní test scénáře jsou minimální; člověk schvaluje rovnou tento návrh a jde se do implementace. U **standard-track** běží plný proces tak, jak je popsán dále v metodice.
 
 Volitelné podpůrné artefakty:
 
@@ -517,8 +560,12 @@ MANUAL_CHECK_AND_APPROVAL
 
 ## 7.1 Lidsky pojmenovaný flow
 
+Standard-track:
+
 ```text
 Máme požadavek
+↓
+Triage zařadila změnu jako standard-track
 ↓
 Brief je hotový
 ↓
@@ -539,15 +586,44 @@ Proběhla finální kontrola člověkem
 Změna je hotová
 ```
 
+Fast-track:
+
+```text
+Máme požadavek
+↓
+Triage zařadila změnu jako fast-track
+↓
+Návrh změny je hotový (brief + testy + plán v jednom)
+↓
+Člověk schválil návrh změny
+↓
+Implementace a dokumentace jsou hotové
+↓
+Kompletní testy proběhly
+↓
+Proběhla finální kontrola člověkem
+↓
+Změna je hotová
+```
+
 ## 7.2 Technické stavy
 
 ```text
 NEW_REQUEST
+TRIAGE_DONE
+
+# standard-track
 DISCOVERY_BRIEF_DONE
 TEST_CASES_DONE
 BRIEF_AND_TESTS_APPROVED
 IMPLEMENTATION_PLAN_DONE
 PLAN_APPROVED
+
+# fast-track (Brief + testy + plán sloučeny do "Návrhu změny")
+CHANGE_PROPOSAL_DONE
+CHANGE_PROPOSAL_APPROVED
+
+# společné
 IMPLEMENTATION_AND_DOCS_DONE
 FULLY_TESTED
 FINAL_REVIEW_READY
@@ -557,18 +633,25 @@ REJECTED
 BLOCKED
 ```
 
+Po triage se tok rozdělí. Po `PLAN_APPROVED` (standard-track) i `CHANGE_PROPOSAL_APPROVED` (fast-track) se sbíhá do společného `IMPLEMENTATION_AND_DOCS_DONE`.
+
 ## 7.3 Mermaid stavový diagram
 
 ```mermaid
 stateDiagram-v2
     [*] --> NEW_REQUEST
-    NEW_REQUEST --> DISCOVERY_BRIEF_DONE
+    NEW_REQUEST --> TRIAGE_DONE
+    TRIAGE_DONE --> DISCOVERY_BRIEF_DONE: standard-track
+    TRIAGE_DONE --> CHANGE_PROPOSAL_DONE: fast-track
     DISCOVERY_BRIEF_DONE --> TEST_CASES_DONE
     TEST_CASES_DONE --> BRIEF_AND_TESTS_APPROVED
     TEST_CASES_DONE --> DISCOVERY_BRIEF_DONE: člověk vrací brief/testy
     BRIEF_AND_TESTS_APPROVED --> IMPLEMENTATION_PLAN_DONE
     IMPLEMENTATION_PLAN_DONE --> PLAN_APPROVED
     IMPLEMENTATION_PLAN_DONE --> BRIEF_AND_TESTS_APPROVED: plán neodpovídá zadání
+    CHANGE_PROPOSAL_DONE --> CHANGE_PROPOSAL_APPROVED
+    CHANGE_PROPOSAL_DONE --> CHANGE_PROPOSAL_DONE: člověk vrací návrh
+    CHANGE_PROPOSAL_APPROVED --> IMPLEMENTATION_AND_DOCS_DONE
     PLAN_APPROVED --> IMPLEMENTATION_AND_DOCS_DONE
     IMPLEMENTATION_AND_DOCS_DONE --> FULLY_TESTED
     FULLY_TESTED --> IMPLEMENTATION_AND_DOCS_DONE: chyba v kódu/docs
@@ -610,6 +693,7 @@ stateDiagram-v2
   /{ticket-id}
     change-state.json
     01-brief.md
+    01-change-proposal.md        # pouze fast-track (brief + testy + plán)
     02-test-cases.md
     03-implementation-plan.md
     03-file-change-plan.md
@@ -641,6 +725,19 @@ CLAUDE.md
 
 ```md
 # Change Brief: {ticket-id}
+
+## 0. Triage Classification
+
+<!-- machine-readable, validovatelné orchestrátorem -->
+```yaml
+track: fast-track | standard-track
+estimated_affected_modules: <number>
+affected_modules: []
+change_type: typo | simple-ui | business-logic | data-model | api | other
+risk_level: low | medium | high
+rationale: >
+  Krátké zdůvodnění výběru cesty.
+```
 
 ## 1. Request Summary
 
@@ -855,6 +952,7 @@ lokální orchestrátor + spouštěč specializovaných agentů
     start-change.md
     continue-change.md
     approve-brief-tests.md
+    approve-change-proposal.md
     approve-plan.md
     final-check.md
 ```
@@ -977,15 +1075,17 @@ Výsledek:
 - vytvořit složku `/changes/{ticket-id}`,
 - vytvořit `change-state.json`,
 - spustit Change Intake & Discovery Agent,
-- vytvořit `01-brief.md`,
-- spustit Test Case Writer Agent,
-- vytvořit `02-test-cases.md`,
+- nechat agenta provést **triage** a zapsat ji do `01-brief.md`,
+- podle výsledku triage zvolit cestu:
+  - **standard-track:** vytvořit `01-brief.md`, spustit Test Case Writer Agent, vytvořit `02-test-cases.md`,
+  - **fast-track:** vytvořit `01-change-proposal.md` (sloučený brief + testy + plán),
 - zastavit se na human gate.
 
 Výsledný stav:
 
 ```text
-TEST_CASES_DONE
+standard-track: TEST_CASES_DONE
+fast-track:     CHANGE_PROPOSAL_DONE
 ```
 
 ## 12.3 `/continue-change {ticket-id}`
@@ -999,12 +1099,25 @@ TEST_CASES_DONE
 
 ## 12.4 `/approve-brief-tests {ticket-id}`
 
+Pro **standard-track**.
+
 Úkol:
 
 - ověřit, že existuje `01-brief.md`,
 - ověřit, že existuje `02-test-cases.md`,
 - nastavit `BRIEF_AND_TESTS_APPROVED`,
 - spustit Implementation Planner Agent.
+
+## 12.4b `/approve-change-proposal {ticket-id}`
+
+Pro **fast-track**.
+
+Úkol:
+
+- ověřit, že existuje `01-change-proposal.md`,
+- ověřit, že obsahuje brief, test scénáře i implementační plán,
+- nastavit `CHANGE_PROPOSAL_APPROVED`,
+- připravit implementační fázi (bez samostatného plánovacího kroku).
 
 ## 12.5 `/approve-plan {ticket-id}`
 
@@ -1116,7 +1229,8 @@ success_criteria:
 id: change_intake_discovery
 name: Change Intake & Discovery Agent
 purpose: >
-  Convert a raw change request into one informed brief.
+  Convert a raw change request into one informed brief, and triage its complexity
+  (fast-track vs standard-track) based on the estimated number of affected modules.
 
 inputs:
   - raw change request
@@ -1129,8 +1243,20 @@ inputs:
   - human answers
 
 outputs:
-  - changes/{ticket-id}/01-brief.md
+  - changes/{ticket-id}/01-brief.md          # standard-track
+  - changes/{ticket-id}/01-change-proposal.md # fast-track (brief + tests + plan)
   - changes/{ticket-id}/screenshots/, optional
+
+triage:
+  criterion_primary: estimated number of affected modules from the technical wiki
+  criteria_secondary:
+    - change type (typo / simple UI vs business logic / data / API)
+    - risk and impact on existing tests
+  rules:
+    fast_track: ~1 module, no data-model/API change, low risk
+    standard_track: 2+ modules, business/data/API change, unclear or risky impact
+  on_doubt: choose standard-track
+  output_section: "Triage Classification (machine-readable YAML in the brief)"
 
 human_in_the_loop:
   during_agent: true
@@ -1157,7 +1283,8 @@ forbidden_actions:
   - silently assume risky business rules
 
 success_criteria:
-  - 01-brief.md exists
+  - 01-brief.md (or 01-change-proposal.md for fast-track) exists
+  - triage classification is present and machine-readable
   - current state is described
   - scope and out-of-scope are clear
   - acceptance criteria are present
@@ -1459,6 +1586,7 @@ Needs Human Decision
 - [ ] start-change.md
 - [ ] continue-change.md
 - [ ] approve-brief-tests.md
+- [ ] approve-change-proposal.md
 - [ ] approve-plan.md
 - [ ] final-check.md
 
