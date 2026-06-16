@@ -105,17 +105,19 @@ ruční kontrola člověkem
 
 Pokud testy najdou problém, může se dokumentace ještě upravit, ale typicky už by měla být hotová spolu s implementací.
 
-## 2.5 Testuje se kompletně
+## 2.5 Testuje se chytře v průběhu, kompletně před uzavřením
 
-Automated Test Agent nemá spustit pouze „relevantní“ testy.
-
-Musí proběhnout:
+Kompletní testovací sada při každé drobné iteraci je u velkých projektů neúnosná. Metodika proto rozlišuje dvě úrovně testování:
 
 ```text
-full test run
+průběžné cykly  → Minimal Viable Test Set (relevantní testy podle impact analysis)
+před uzavřením  → full test run (kompletní sada včetně Playwright)
 ```
 
-včetně Playwright testů, pokud v projektu existují nebo se mají vytvořit.
+- **Minimal Viable Test Set (MVTS)** definuje `Implementation Planner Agent` na základě analýzy dopadů a zapíše jej do `03-test-automation-plan.md`. `Automated Test Agent` během průběžných cyklů spouští právě tento set, aby byla rychlá zpětná vazba.
+- **Kompletní běh** je povinný a vynucuje ho orchestrátor ve fázi `Final Review Check` — teprve tehdy proběhne celá testovací sada včetně Playwright scénářů.
+
+Zkrácení testů je tedy povolené pouze v průběžných cyklech a musí být explicitně označené jako předběžné. Kompletní běh se nikdy nevynechává; změnu nelze uzavřít bez úspěšného full test run.
 
 ## 2.6 Page Object Model není projektová paměť
 
@@ -402,6 +404,7 @@ Vše je v jednom 02-test-cases.md.
 - vytvořit implementační plán,
 - rozdělit dopady na kód, testy a dokumentaci,
 - určit pravděpodobně měněné soubory,
+- na základě analýzy dopadů (impact analysis) definovat **Minimal Viable Test Set (MVTS)** pro průběžné cykly,
 - navrhnout test automation plan,
 - navrhnout docs update plan,
 - neimplementovat.
@@ -472,7 +475,8 @@ updated release notes / changelog, pokud existuje
 - vyjít ze schválených slovních test scénářů,
 - upravit nebo vytvořit Playwright testy,
 - upravit Page Object Model,
-- spustit kompletní testovací sadu,
+- v průběžných cyklech spouštět **Minimal Viable Test Set** (relevantní testy podle `03-test-automation-plan.md`),
+- před uzavřením spustit **kompletní testovací sadu** (vynucuje orchestrátor ve Final Review Check),
 - zapsat report,
 - rozlišit chybu aplikace, chybu testu, flaky test a problém dokumentace.
 
@@ -1163,6 +1167,8 @@ Pro **fast-track**.
 
 Úkol:
 
+- vynutit přes Automated Test Agent **kompletní testovací běh** (full test run včetně Playwright scénářů),
+- ověřit, že full test run proběhl a je zachycen v `05-full-test-run-report.md`,
 - provést Final Review Check,
 - ověřit artefakty,
 - připravit checklist pro člověka,
@@ -1398,6 +1404,7 @@ success_criteria:
   - implementation steps are clear
   - likely files are listed
   - test automation plan exists
+  - minimal viable test set is defined from impact analysis
   - docs update plan exists
   - risks are recorded
 ```
@@ -1508,17 +1515,20 @@ outputs:
 allowed_actions:
   - modify test files
   - modify Page Object Model
-  - run full test suite
+  - run the Minimal Viable Test Set during preliminary/iterative cycles
+  - run full test suite (mandatory before closing, enforced at Final Review Check)
   - record test results
 
 forbidden_actions:
   - silently reduce test scope
   - run only relevant tests unless explicitly marked as preliminary
+  - skip the full test run before closing the change
   - change production logic unless separately authorized
   - hide failing tests
 
 success_criteria:
-  - full test run was executed
+  - preliminary cycles ran the Minimal Viable Test Set
+  - a full test run was executed before final review
   - test results are recorded
   - failures are categorized
   - Page Object Model changes are documented
