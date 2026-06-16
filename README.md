@@ -991,6 +991,14 @@ You keep all change-specific artifacts in:
 
 /changes/{ticket-id}
 
+You keep all change state and artifacts on a dedicated feature branch:
+
+change/{ticket-id}
+
+Before continuing a change you verify the developer is on the correct branch and pull
+the latest state from the remote. After each significant step you commit and push the
+updated state. You never overwrite diverging state; you ask the human to resolve it.
+
 You use the specialized agents when possible:
 
 - Technical Wiki Agent
@@ -1023,12 +1031,30 @@ Každá změna má mít:
 /changes/{ticket-id}/change-state.json
 ```
 
+## 11.1 Stav žije ve vlastní Git větvi
+
+Spoléhání na čistě lokální `change-state.json` je rizikové pro týmovou spolupráci. Proto:
+
+- celá složka `/changes/{ticket-id}` (včetně `change-state.json` a všech artefaktů) je **vždy součástí vlastní feature branch** pro daný úkol,
+- doporučená konvence pojmenování větve:
+
+```text
+change/{ticket-id}
+```
+
+- stav se nepřenáší kopírováním souborů mezi vývojáři, ale výhradně přes Git (commit + push + pull),
+- orchestrátor po každém významném kroku (dokončení artefaktu, změna stavu, human gate) stav **commitne** do větve změny.
+
+Tím se předejde konfliktům, které by vznikaly při ručním kopírování souborů, a stav změny je auditovatelný a sdílený přes repozitář.
+
 Příklad:
 
 ```json
 {
   "ticketId": "JIRA-123",
   "title": "Add customer priority to order",
+  "branch": "change/JIRA-123",
+  "track": "standard-track",
   "status": "TEST_CASES_DONE",
   "currentStep": "awaiting_brief_and_tests_approval",
   "artifacts": {
@@ -1072,8 +1098,9 @@ Výsledek:
 
 Úkol:
 
+- vytvořit (nebo přepnout na) feature branch `change/{ticket-id}`,
 - vytvořit složku `/changes/{ticket-id}`,
-- vytvořit `change-state.json`,
+- vytvořit `change-state.json` (včetně pole `branch`),
 - spustit Change Intake & Discovery Agent,
 - nechat agenta provést **triage** a zapsat ji do `01-brief.md`,
 - podle výsledku triage zvolit cestu:
@@ -1092,10 +1119,15 @@ fast-track:     CHANGE_PROPOSAL_DONE
 
 Úkol:
 
+- ověřit, že je vývojář na správné větvi `change/{ticket-id}`; pokud ne, na ni přepnout,
+- provést `git pull` aktuálního stavu větve z repozitáře (aby se předešlo konfliktům),
 - přečíst `change-state.json`,
 - určit další povolený krok,
 - spustit správného agenta,
-- nepřeskakovat human gates.
+- nepřeskakovat human gates,
+- po dokončení kroku stav commitnout a pushnout do větve změny.
+
+Pokud lokální stav neodpovídá vzdálenému (rozbíhající se historie), orchestrátor se zastaví a vyžádá si vyřešení od člověka, místo aby stav přepsal.
 
 ## 12.4 `/approve-brief-tests {ticket-id}`
 
