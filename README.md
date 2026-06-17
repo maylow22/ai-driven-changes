@@ -1,6 +1,6 @@
 # AI-driven changes
 
-Lehká metodika pro řízení změn v softwaru s pomocí AI. Cílem není autonomní AI, která bez dozoru mění systém, ale **řízené workflow**, kde AI dělá specializovanou práci, orchestrátor hlídá tok a člověk rozhoduje v klíčových bodech.
+High-level metodika pro řízení změn v softwaru s pomocí AI. Cílem není autonomní AI, která bez dozoru mění systém, ale **řízené workflow**, kde AI dělá specializovanou práci, orchestrátor hlídá tok a člověk rozhoduje v klíčových bodech.
 
 Tento dokument je úmyslně stručný a technologicky nezávislý. Popisuje **principy a role**. Implementovat ho lze mnoha způsoby (AI agenti, LangGraph, vlastní orchestrátor, ručně podle checklistů, …).
 
@@ -8,7 +8,14 @@ Tento dokument je úmyslně stručný a technologicky nezávislý. Popisuje **pr
 
 ## Hlavní myšlenka
 
-Každá změna prochází třemi fázemi. Po každé fázi následuje **kontrola člověkem**. V průběhu analýzy se navíc může člověk doptávat na nejasnosti.
+Každá změna prochází čtyřmi fázemi. 
+
+1. Analýza
+2. Implementace
+3. Testování
+4. Finalizace
+
+Po každé fázi následuje **kontrola člověkem**. V průběhu analýzy se navíc může člověk doptávat na nejasnosti.
 
 ```mermaid
 flowchart LR
@@ -16,6 +23,7 @@ flowchart LR
     G1 --> I[Implementace]:::phase --> G2{Human gate}:::gate
     G2 --> T[Testování]:::phase --> G3{Human gate}:::gate
     G3 --> F[Finalizace]:::phase
+    T --->|Chyba z testování| I
 
     classDef phase fill:#e3f2fd,stroke:#1976d2,color:#0d47a1;
     classDef gate fill:#fff8e1,stroke:#f9a825,color:#5d4037;
@@ -24,6 +32,18 @@ flowchart LR
 
 
 Princip je nezávislý na technologii, jazyku ani typu aplikace. Mění se jen rozsah a hloubka, ne fáze samotné.
+
+---
+
+## Předpoklad úspěchu: kvalitní a technická dokumentace aktualizovana automaticky
+
+Tato metodika stojí a padá s tím, jak rychle a levně dokáže AI (i člověk) získat přesný kontext o systému. Bez něj analytik tápe, implementátor hádá a kontrolor nemá s čím porovnávat. Doporučené minimum:
+
+- **Technická wiki**  například ve stylu „LLM wiki" — strukturovaný popis kódu, architektury, přístupů, konceptů a entit, optimalizovaný pro čtení LLM i člověkem. Inspirace: [Karpathy — LLM wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f).
+- **Log všech změn** — přístupná historie toho, co se v systému měnilo, proč a kdy (changelog, commit log s kontextem, archiv briefů a plánů). Umožňuje rychle dohledat, jak se k aktuálnímu stavu došlo, bez nutnosti znovu analyzovat celý kód.
+- **Aktualizace ve finalizaci** — wiki i log se aktualizují **až ve finalizační fázi**, podle finálního stavu kódu. Implementační ↔ testovací smyčka může proběhnout vícekrát; regenerovat dokumentaci po každém průchodu by bylo drahé a stejně by hned zastarala. Finalizační krok se ale **nesmí přeskakovat** — zastaralá wiki je horší než žádná.
+
+Čím přesnější a aktuálnější dokumentace, tím kratší analýza, méně doptávání člověka a méně chyb v implementaci.
 
 ---
 
@@ -81,7 +101,6 @@ Z analyticky připraveného zadání udělá plán a provede implementaci.
 
 - plán je vhodné nechat odsouhlasit (zvlášť u větších změn),
 - samotnou implementaci může dělat AI agent i člověk; analytik a tester pak fungují jako podpora,
-- aktualizuje dokumentaci průběžně se změnou, ne až po testech.
 
 ### Tester
 
@@ -89,15 +108,17 @@ Z testovacích scénářů připraví **automatizované testy** (např. Playwrig
 
 - pokud test odhalí chybu v aplikaci, vrací úkol zpět implementátorovi,
 - pokud automatizace selže (nelze rozumně napsat), explicitně to říká a předává zpět implementátorovi nebo na ruční ověření.
+- v 
 
 ### Kontrolor / Finalizátor
 
-Závěrečná kontrola před uzavřením změny.
+Závěrečná fáze před uzavřením změny — zahrnuje **kontrolu i aktualizaci dokumentace**. Je to **jediné místo, kde se wiki a uživatelská dokumentace aktualizuje**.
 
 - zkontroluje, jestli jsou všechny artefakty v souladu (brief, plán, kód, testy, dokumentace),
 - ověří, že **původní záměr změny byl naplněn**,
 - u změn bez automatických testů aplikaci proklikne ručně,
-- pokud chybí, doplní wiki a uživatelskou dokumentaci.
+- **aktualizuje technickou wiki a uživatelskou dokumentaci** podle finálního stavu kódu — až teď, kdy implementace ↔ testování doiterovaly a kód je stabilní,
+- doplní záznam do logu změn (co se měnilo a proč).
 
 ---
 
@@ -129,14 +150,12 @@ Rozhodnutí fast-track vs. plný proces dělá orchestrátor (nebo analytik) hne
 
 ```mermaid
 flowchart LR
-    Q{Rozsah &<br/>riziko změny?}
-    Q -->|větší / rizikové| Full[Plný proces<br/>Analýza → Implementace →<br/>Testování → Finalizace]
-    Q -->|drobné / lokální| Fast[Fast-track<br/>Lehká analýza → Implementace →<br/>Finalizace]
+    Q{Rozsah &<br/>riziko změny?}:::q
+    Q -->|větší / rizikové| Full[Plný proces<br/>Analýza → Implementace →<br/>Testování → Finalizace]:::path
+    Q -->|drobné / lokální| Fast[Fast-track<br/>Lehká analýza → Implementace →<br/>Finalizace]:::path
 
     classDef q fill:#fff8e1,stroke:#f9a825,color:#5d4037;
     classDef path fill:#e3f2fd,stroke:#1976d2,color:#0d47a1;
-    class Q q;
-    class Full,Fast path;
 ```
 
 
