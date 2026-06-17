@@ -2,9 +2,7 @@
 
 Lehká metodika pro řízení změn v softwaru s pomocí AI. Cílem není autonomní AI, která bez dozoru mění systém, ale **řízené workflow**, kde AI dělá specializovanou práci, orchestrátor hlídá tok a člověk rozhoduje v klíčových bodech.
 
-Tento dokument je úmyslně stručný a technologicky nezávislý. Popisuje **principy a role**. Implementovat ho lze mnoha způsoby (Claude Code agenti, LangGraph, vlastní orchestrátor, ručně podle checklistů, …).
-
-Detailní rozpracování (artefakty, šablony, stavový model, schémata, ukázky Claude Code agentů) je v [`detailed-methodology.md`](./detailed-methodology.md).
+Tento dokument je úmyslně stručný a technologicky nezávislý. Popisuje **principy a role**. Implementovat ho lze mnoha způsoby (AI agenti, LangGraph, vlastní orchestrátor, ručně podle checklistů, …).
 
 ---
 
@@ -12,9 +10,18 @@ Detailní rozpracování (artefakty, šablony, stavový model, schémata, ukázk
 
 Každá změna prochází třemi fázemi. Po každé fázi následuje **kontrola člověkem**. V průběhu analýzy se navíc může člověk doptávat na nejasnosti.
 
-```text
-ANALÝZA  →  [human gate]  →  IMPLEMENTACE  →  [human gate]  →  TESTOVÁNÍ  →  [human gate]  →  FINALIZACE
+```mermaid
+flowchart LR
+    A[Analýza]:::phase --> G1{Human gate}:::gate
+    G1 --> I[Implementace]:::phase --> G2{Human gate}:::gate
+    G2 --> T[Testování]:::phase --> G3{Human gate}:::gate
+    G3 --> F[Finalizace]:::phase
+
+    classDef phase fill:#e3f2fd,stroke:#1976d2,color:#0d47a1;
+    classDef gate fill:#fff8e1,stroke:#f9a825,color:#5d4037;
 ```
+
+
 
 Princip je nezávislý na technologii, jazyku ani typu aplikace. Mění se jen rozsah a hloubka, ne fáze samotné.
 
@@ -22,7 +29,35 @@ Princip je nezávislý na technologii, jazyku ani typu aplikace. Mění se jen r
 
 ## Role
 
-V systému jsou čtyři pracovní role plus orchestrátor. Mohou to být AI agenti, Claude Code skilly, lidé, nebo libovolná kombinace.
+V systému jsou čtyři pracovní role plus orchestrátor. Mohou to být AI agenti, lidé, nebo libovolná kombinace.
+
+```mermaid
+flowchart TB
+    H((Člověk)):::human
+    O[Orchestrátor]:::orch
+    A[Analytik]:::role
+    I[Implementátor]:::role
+    T[Tester]:::role
+    K[Kontrolor /<br/>Finalizátor]:::role
+
+    H <-->|gates &<br/>doptávání| O
+    O --> A
+    O --> I
+    O --> T
+    O --> K
+    A -. brief +<br/>test-cases .-> O
+    I -. kód +<br/>plán .-> O
+    T -. výsledky<br/>testů .-> O
+    K -. finální<br/>schválení .-> O
+
+    classDef orch fill:#ede7f6,stroke:#5e35b1,color:#311b92;
+    classDef role fill:#e8f5e9,stroke:#388e3c,color:#1b5e20;
+    classDef human fill:#fff3e0,stroke:#ef6c00,color:#e65100;
+```
+
+
+
+Orchestrátor je dispečer — drží stav, rozesílá práci, hlídá gates. Nikdy sám neschvaluje, to dělá výhradně člověk.
 
 ### Orchestrátor
 
@@ -92,18 +127,26 @@ Human gates zůstávají, ale jsou kratší — typicky stačí jeden schvalovac
 
 Rozhodnutí fast-track vs. plný proces dělá orchestrátor (nebo analytik) hned na začátku podle rozsahu a rizika změny.
 
+```mermaid
+flowchart LR
+    Q{Rozsah &<br/>riziko změny?}
+    Q -->|větší / rizikové| Full[Plný proces<br/>Analýza → Implementace →<br/>Testování → Finalizace]
+    Q -->|drobné / lokální| Fast[Fast-track<br/>Lehká analýza → Implementace →<br/>Finalizace]
+
+    classDef q fill:#fff8e1,stroke:#f9a825,color:#5d4037;
+    classDef path fill:#e3f2fd,stroke:#1976d2,color:#0d47a1;
+    class Q q;
+    class Full,Fast path;
+```
+
+
+
 ---
 
 ## Co metodika záměrně neřeší
 
 - konkrétní technologie (jazyk, framework, testovací nástroje, CI/CD),
 - konkrétní rozhraní (Jira, GitHub, vlastní dashboard, …),
-- konkrétní implementaci agentů (Claude Code, LangGraph, …).
+- konkrétní implementaci agentů (LangGraph, vlastní orchestrátor, …).
 
 Toto všechno jsou implementační detaily. Metodika definuje **principy a role**, zbytek je na konkrétním nasazení.
-
----
-
-## Kam dál
-
-- [`detailed-methodology.md`](./detailed-methodology.md) — podrobná verze s artefakty, šablonami, stavovým modelem, validačními schématy a ukázkovou implementací v Claude Code.
