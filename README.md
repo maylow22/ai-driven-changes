@@ -1,47 +1,65 @@
-# AI-driven changes
+# AI-driven changes — Manifest
 
-High-level metodika pro řízení změn v softwaru s pomocí AI. Cílem není autonomní AI, která bez dozoru mění systém, ale **řízené workflow**, kde AI dělá specializovanou práci, orchestrátor hlídá tok a člověk rozhoduje v klíčových bodech.
+Manifest pro řízení změn v softwaru s pomocí AI. **Cílem není autonomní AI**, která bez dozoru mění systém, ale **řízené workflow**, kde AI dělá specializovanou práci, orchestrátor hlídá tok a člověk rozhoduje v klíčových bodech.
 
 Tento dokument je úmyslně stručný a technologicky nezávislý. Popisuje **principy a role**. Implementovat ho lze mnoha způsoby (AI agenti, LangGraph, vlastní orchestrátor, ručně podle checklistů, …).
 
 ---
 
+## Hodnoty
+
+Manifest staví na pěti hodnotách. Pravá strana má svoji váhu, ale my preferujeme levou.
+
+1. **Specializaci** nad univerzálností — každá role má svůj úkol, svůj model a svoji teplotu.
+2. **Řízený tok** nad autonomií — orchestrátor je dispečer, nikoli rozhodovatel.
+3. **Člověka v rozhodovacích bodech** nad rychlostí pipeline — gates se zkracují, ne škrtají.
+4. **Aktuální dokumentaci** nad implicitní znalostí — wiki je vstup i výstup procesu.
+5. **Logovatelnost** nad neviditelnou produktivitou — každý krok agenta i člověka je zaznamenatelný.
+
+---
+
 ## Hlavní myšlenka
 
-Každá změna prochází čtyřmi fázemi. 
+Každá změna prochází čtyřmi fázemi:
 
 1. Analýza
 2. Implementace
 3. Testování
 4. Finalizace
 
-Po každé fázi následuje **kontrola člověkem**. V průběhu analýzy se navíc může člověk doptávat na nejasnosti.
+Fáze **nejsou lineární kroky**. Jsou to cíle. Mezi nimi se práce vrací, přeskakuje a přehazuje podle stavu — **tok hlídá orchestrátor**. Po klíčových bodech vstupuje **člověk**.
 
 ```mermaid
-flowchart LR
-    A[Analýza]:::phase --> G1{Human gate}:::gate
-    G1 --> I[Implementace]:::phase --> G2{Human gate}:::gate
-    G2 --> T[Testování]:::phase --> G3{Human gate}:::gate
-    G3 --> F[Finalizace]:::phase
-    T --->|Chyba z testování| I
+flowchart TB
+    H((Člověk)):::human
+    O[Orchestrátor]:::orch
+    A[Analýza]:::phase
+    I[Implementace]:::phase
+    T[Testování]:::phase
+    F[Finalizace]:::phase
+
+    H <-->|gates &<br/>doptávání| O
+    O <--> A
+    O <--> I
+    O <--> T
+    O <--> F
 
     classDef phase fill:#e3f2fd,stroke:#1976d2,color:#0d47a1;
-    classDef gate fill:#fff8e1,stroke:#f9a825,color:#5d4037;
+    classDef orch fill:#ede7f6,stroke:#5e35b1,color:#311b92;
+    classDef human fill:#fff3e0,stroke:#ef6c00,color:#e65100;
 ```
 
-
-
-Princip je nezávislý na technologii, jazyku ani typu aplikace. Mění se jen rozsah a hloubka, ne fáze samotné.
+Manifest definuje **principy a role**, nikoli konkrétní implementaci. Specifika jednotlivých technologií, typů aplikací a edge cases (incident response, rollback, regulace, mobilní/embedded/ML cykly) budou rozpracovány v navazujících dokumentech.
 
 ---
 
-## Předpoklad úspěchu: kvalitní a technická dokumentace aktualizovana automaticky
+## Předpoklad: kvalitní technická dokumentace
 
-Tato metodika stojí a padá s tím, jak rychle a levně dokáže AI (i člověk) získat přesný kontext o systému. Bez něj analytik tápe, implementátor hádá a kontrolor nemá s čím porovnávat. Doporučené minimum:
+Manifest stojí a padá s tím, jak rychle a levně dokáže AI (i člověk) získat přesný kontext o systému. Bez něj analytik tápe, implementátor hádá a kontrolor nemá s čím porovnávat. Doporučené minimum:
 
-- **Technická wiki**  například ve stylu „LLM wiki" — strukturovaný popis kódu, architektury, přístupů, konceptů a entit, optimalizovaný pro čtení LLM i člověkem. Inspirace: [Karpathy — LLM wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f).
+- **Technická wiki** například ve stylu „LLM wiki" — strukturovaný popis kódu, architektury, přístupů, konceptů a entit, optimalizovaný pro čtení LLM i člověkem. Inspirace: [Karpathy — LLM wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f).
 - **Log všech změn** — přístupná historie toho, co se v systému měnilo, proč a kdy (changelog, commit log s kontextem, archiv briefů a plánů). Umožňuje rychle dohledat, jak se k aktuálnímu stavu došlo, bez nutnosti znovu analyzovat celý kód.
-- **Aktualizace ve finalizaci** — wiki i log se aktualizují **až ve finalizační fázi**, podle finálního stavu kódu. Implementační ↔ testovací smyčka může proběhnout vícekrát; regenerovat dokumentaci po každém průchodu by bylo drahé a stejně by hned zastarala. Finalizační krok se ale **nesmí přeskakovat** — zastaralá wiki je horší než žádná.
+- **Aktualizace ve finalizaci** — wiki i log se aktualizují **až ve finalizační fázi** rolí Generátora dokumentace. Implementační ↔ testovací smyčka může proběhnout vícekrát; regenerovat dokumentaci po každém průchodu by bylo drahé a stejně by hned zastarala. Finalizační krok se ale **nesmí přeskakovat** — zastaralá wiki je horší než žádná.
 
 Čím přesnější a aktuálnější dokumentace, tím kratší analýza, méně doptávání člověka a méně chyb v implementaci.
 
@@ -49,7 +67,7 @@ Tato metodika stojí a padá s tím, jak rychle a levně dokáže AI (i člověk
 
 ## Role
 
-V systému jsou čtyři pracovní role plus orchestrátor. Mohou to být AI agenti, lidé, nebo libovolná kombinace.
+V systému je pět pracovních rolí plus orchestrátor. Mohou to být AI agenti, lidé, nebo libovolná kombinace. **Každá role může mít vlastní model a vlastní teplotu** podle povahy úkolu — manifest neurčuje konkrétní hodnoty, ale očekává vědomou volbu.
 
 ```mermaid
 flowchart TB
@@ -58,16 +76,19 @@ flowchart TB
     A[Analytik]:::role
     I[Implementátor]:::role
     T[Tester]:::role
+    D[Generátor<br/>dokumentace]:::role
     K[Kontrolor /<br/>Finalizátor]:::role
 
     H <-->|gates &<br/>doptávání| O
     O --> A
     O --> I
     O --> T
+    O --> D
     O --> K
     A -. brief +<br/>test-cases .-> O
     I -. kód +<br/>plán .-> O
     T -. výsledky<br/>testů .-> O
+    D -. wiki +<br/>changelog .-> O
     K -. finální<br/>schválení .-> O
 
     classDef orch fill:#ede7f6,stroke:#5e35b1,color:#311b92;
@@ -75,13 +96,11 @@ flowchart TB
     classDef human fill:#fff3e0,stroke:#ef6c00,color:#e65100;
 ```
 
-
-
-Orchestrátor je dispečer — drží stav, rozesílá práci, hlídá gates. Nikdy sám neschvaluje, to dělá výhradně člověk.
+Orchestrátor je dispečer — drží stav, rozesílá práci, hlídá gates. **Nikdy sám neschvaluje, to dělá výhradně člověk.**
 
 ### Orchestrátor
 
-Řídí celý tok. Drží stav změny, rozhoduje, kdo je na řadě, hlídá human gates, vrací práci zpět, když výstup neodpovídá zadání. Nikdy sám neschvaluje.
+Řídí celý tok. Drží stav změny, rozhoduje, kdo je na řadě, hlídá human gates, **vrací nebo přehazuje práci mezi libovolnými fázemi** (test → implementace, kontrola → analýza, finalizace → kamkoliv) podle toho, co výstup ukáže. Nikdy sám neschvaluje.
 
 ### Analytik
 
@@ -100,25 +119,47 @@ Výstup: analytický dokument (`brief.md`) a sada testovacích scénářů (`tes
 Z analyticky připraveného zadání udělá plán a provede implementaci.
 
 - plán je vhodné nechat odsouhlasit (zvlášť u větších změn),
-- samotnou implementaci může dělat AI agent i člověk; analytik a tester pak fungují jako podpora,
+- samotnou implementaci může dělat AI agent i člověk; analytik a tester pak fungují jako podpora.
 
 ### Tester
 
 Z testovacích scénářů připraví **automatizované testy** (např. Playwright, Cypress, jiný testovací framework) a spustí je.
 
-- pokud test odhalí chybu v aplikaci, vrací úkol zpět implementátorovi,
+- pokud test odhalí chybu v aplikaci, vrací úkol přes orchestrátora zpět implementátorovi (případně analytikovi, pokud je vada v zadání),
 - pokud automatizace selže (nelze rozumně napsat), explicitně to říká a předává zpět implementátorovi nebo na ruční ověření.
-- v 
+
+### Generátor dokumentace
+
+Udržuje technickou wiki a log změn aktuální. Aktivuje se primárně ve **finalizační fázi**, kdy je kód stabilní.
+
+- regeneruje nebo aktualizuje části wiki dotčené změnou,
+- doplní záznam do logu změn (co se měnilo a proč, s odkazem na brief, plán, testy),
+- nepíše dokumentaci „dopředu" pro nestabilní stav — to by produkovalo jen šum.
+
+Výstup: aktualizovaná wiki a changelog.
 
 ### Kontrolor / Finalizátor
 
-Závěrečná fáze před uzavřením změny — zahrnuje **kontrolu i aktualizaci dokumentace**. Je to **jediné místo, kde se wiki a uživatelská dokumentace aktualizuje**.
+Závěrečná role před uzavřením změny.
 
 - zkontroluje, jestli jsou všechny artefakty v souladu (brief, plán, kód, testy, dokumentace),
 - ověří, že **původní záměr změny byl naplněn**,
 - u změn bez automatických testů aplikaci proklikne ručně,
-- **aktualizuje technickou wiki a uživatelskou dokumentaci** podle finálního stavu kódu — až teď, kdy implementace ↔ testování doiterovaly a kód je stabilní,
-- doplní záznam do logu změn (co se měnilo a proč).
+- ověří, že Generátor dokumentace odvedl práci a wiki odpovídá kódu.
+
+---
+
+## Konfigurace rolí: model a teplota
+
+Manifest žádný konkrétní model nepředepisuje, ale očekává **vědomou volbu** pro každou roli. Příklad jedné rozumné konfigurace:
+
+- **Analytik** — silný model, vyšší teplota; hledá souvislosti a alternativy.
+- **Implementátor** — silný model, nižší teplota; deterministický výstup.
+- **Tester** — model s důrazem na detail, nízká teplota; stabilita.
+- **Generátor dokumentace** — model s dobrou strukturou textu, střední teplota.
+- **Kontrolor** — silný model, nízká teplota; konzistentní úsudek.
+
+Konkrétní volba se ladí podle projektu, ne jednou pro všechny. Klíčový princip: **role není = model**. Jedno fyzické zadání (LLM) může obsluhovat víc rolí, jedna role může používat různé modely podle úkolu.
 
 ---
 
@@ -135,6 +176,30 @@ Human gates se nepřeskakují. Mění se jen jejich hloubka podle velikosti změ
 
 ---
 
+## Logovatelnost
+
+Manifest předpokládá, že **každý krok je zaznamenatelný a auditovatelný**:
+
+- **kdo** úkol vykonal (člověk nebo agent, kterým modelem a s jakou teplotou),
+- **kdy** byl artefakt vytvořen a kdy schválen, kým a s jakým komentářem,
+- **jakou cestou** prošla změna — které návraty a přehazování mezi fázemi se staly.
+
+Logovatelnost není volitelný doplněk. Bez ní nelze manifest zlepšovat (chybí data), nelze ho obhájit v regulovaném prostředí a nelze diagnostikovat, kde proces selhal.
+
+---
+
+## Vědomé riziko AI
+
+Manifest přiznává a počítá s tím, že AI agent může:
+
+- **halucinovat** kontext, kód, testy nebo dokumentaci,
+- **selhat nedeterministicky** — stejný vstup dá různé výstupy,
+- **vložit chybu nebo nezamýšlené chování**, které ostatní agenti (např. tester) nemají důvod hledat.
+
+Proto jsou **člověk u gates** a **kontrolor** poslední pojistkou. Důvěra ve výstup AI se buduje měřením a logováním, ne přijetím na slepo.
+
+---
+
 ## Fast-track pro drobné změny
 
 Plný proces nesmí brzdit prkotiny. U **drobných a jednoduchých změn** (překlep, malá UI úprava, lokální oprava bez dopadu na business logiku) může orchestrátor zvolit fast-track:
@@ -142,6 +207,7 @@ Plný proces nesmí brzdit prkotiny. U **drobných a jednoduchých změn** (pře
 - analytik **vypouští samostatné testovací scénáře**,
 - tester nemusí psát žádné automatické testy (případně jen ručně proklikne),
 - některé další kroky lze přeskočit a předat rovnou implementátorovi,
+- generátor dokumentace minimálně doplní záznam do logu změn (regenerace wiki podle uvážení),
 - kontrolor pak ověří, že záměr byl naplněn.
 
 Human gates zůstávají, ale jsou kratší — typicky stačí jeden schvalovací krok na začátku a jeden na konci.
@@ -158,14 +224,14 @@ flowchart LR
     classDef path fill:#e3f2fd,stroke:#1976d2,color:#0d47a1;
 ```
 
-
-
 ---
 
-## Co metodika záměrně neřeší
+## Co manifest záměrně neřeší
 
 - konkrétní technologie (jazyk, framework, testovací nástroje, CI/CD),
 - konkrétní rozhraní (Jira, GitHub, vlastní dashboard, …),
-- konkrétní implementaci agentů (LangGraph, vlastní orchestrátor, …).
+- konkrétní implementaci agentů (LangGraph, vlastní orchestrátor, …),
+- specifika typů aplikací (mobilní, embedded, ML, DB migrace),
+- detailní postupy pro incident response, rollback a compliance.
 
-Toto všechno jsou implementační detaily. Metodika definuje **principy a role**, zbytek je na konkrétním nasazení.
+Toto všechno jsou implementační detaily nebo navazující témata. Manifest definuje **principy a role**, zbytek přijde v dalších dokumentech.
