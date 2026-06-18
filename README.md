@@ -4,6 +4,10 @@ Manifest pro řízení změn v softwaru s pomocí AI. **Cílem není autonomní 
 
 Tento dokument je úmyslně stručný a technologicky nezávislý. Popisuje **principy a role**. Implementovat ho lze mnoha způsoby (AI agenti, LangGraph, vlastní orchestrátor, ručně podle checklistů, …).
 
+Univerzální recept neexistuje a tento manifest ho ani nedává. Každá firma, každý tým, každý projekt má jiný kontext: jiný tech stack, jinou doménu, jinou regulaci, jinou kulturu. Konkrétní pravidla si bude muset každý tým dřív nebo později ušít sám.
+
+Univerzální je jen jeden fakt: **AI dnes v mnoha úkolech pracuje rychleji a přesněji než člověk.** Ignorovat to znamená dobrovolně se brzdit. Manifest proto nepopisuje, *jak* změny dělat, ale **s jakým postojem k AI** k nim přistoupit.
+
 ---
 
 ## Hodnoty
@@ -213,6 +217,8 @@ Plný proces nesmí brzdit prkotiny. U **drobných a jednoduchých změn** (pře
 Human gates zůstávají, ale jsou kratší — typicky stačí jeden schvalovací krok na začátku a jeden na konci.
 
 Rozhodnutí fast-track vs. plný proces dělá orchestrátor (nebo analytik) hned na začátku podle rozsahu a rizika změny.
+
+Aby fast-track nedegradoval v obchvat procesu, **musí mít projekt předem definované jasné metriky** rozhodování — co se počítá jako „drobná změna" (rozsah úprav, dotčené domény, regulační dopad, riziko produkce, …). Subjektivní „tohle je přece drobnost" nestačí; bez metrik se fast-track stává nástrojem na obcházení gates.
 
 ```mermaid
 flowchart LR
